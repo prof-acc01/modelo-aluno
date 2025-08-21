@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "problemas/**"
+      - "config.json"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "problemas/**"
+      - "config.json"
+  workflow_dispatch:
+
+jobs:
+  verificar-extensoes:
+    runs-on: ubuntu-latest
+    outputs:
+      continuar: ${{ steps.verificar.outputs.continuar }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+
+      - name: Detectar arquivos modificados
+        run: |
+          git fetch origin main
+
+          # Detecta se é um PR
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "🔎 Pull Request: comparando com base ref"
+            git diff --name-only origin/${{ github.base_ref }} > modificados.txt
+          elif git cat-file -e ${{ github.event.before }} 2>/dev/null; then
+            echo "🔁 Commit regular: comparando com commit anterior"
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} > modificados.txt
+          else
+            echo "⚠️ Sem commit anterior, listando arquivos do último commit"
+            git log -1 --name-only --pretty=format:'' > modificados.txt
+          fi
+
+          echo "📄 Arquivos modificados:"
+          cat modificados.txt
+
+      - name: Verificar extensões permitidas em config.json
+        id: verificar
+        run: |
+          EXTENSOES=$(jq -r '.languages[].extension' config.json | paste -sd '|' -)
+          echo "Extensões permitidas: $EXTENSOES"
+          echo "arquivos modificados:"
+          cat modificados.txt
+
+          if grep -E "\.(${EXTENSOES})$" modificados.txt > /dev/null; then
+            echo "continuar=true" >> $GITHUB_OUTPUT
+          else
+            echo "continuar=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: verificar-extensoes
+    if: needs.verificar-extensoes.outputs.continuar == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Skip if pushed by bot
+        id: check_actor
+        run: |
+          echo "Actor is $GITHUB_ACTOR"
+          if [ "$GITHUB_ACTOR" = "bot" ] || [ "$GITHUB_ACTOR" = "leol0ps" ]; then
+            echo "Push made by bot user, skipping workflow."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+
+      - name: Dispatch an action and get the run ID
+        if: steps.check_actor.outputs.skip != 'true'
+        uses: codex-/return-dispatch@v2
+        id: return_dispatch
+        with:
+          token: ${{ secrets.PAT }}
+          ref: main
+          repo: 'hub'
+          owner: 'leol0ps'
+          workflow: nvm.yml
+          workflow_inputs: '{"repo": "${{ github.repository }}" }'
+          workflow_timeout_seconds: 120
+
+      - name: Await Run ID ${{ steps.return_dispatch.outputs.run_id }}
+        if: steps.check_actor.outputs.skip != 'true'
+        uses: Codex-/await-remote-run@v1.0.0
+        with:
+          token: ${{ secrets.PAT }}
+          repo: hub
+          owner: leol0ps
+          run_id: ${{ steps.return_dispatch.outputs.run_id }}
+          run_timeout_seconds: 300
+          poll_interval_ms: 5000

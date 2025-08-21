@@ -1,0 +1,24 @@
+{
+  "languages": [
+    {
+      "name": "C",
+      "extension": "c",
+      "id": "1"
+    },
+    {
+      "name": "C++11",
+      "extension": "cpp",
+      "id": "2"
+    },
+    {
+      "name": "Java",
+      "extension": "java",
+      "id": "3"
+    },
+    {
+      "name": "Python3",
+      "extension": "py",
+      "id": "5"
+    }
+  ]
+}
