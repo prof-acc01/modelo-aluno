@@ -67,7 +67,7 @@ jobs:
         id: check_actor
         run: |
           echo "Actor is $GITHUB_ACTOR"
-          if [ "$GITHUB_ACTOR" = "bot" ] || [ "$GITHUB_ACTOR" = "leol0ps" ]; then
+          if [ "$GITHUB_ACTOR" = "bot" ] || [ "$GITHUB_ACTOR" = "prof-acc01" ]; then
             echo "Push made by bot user, skipping workflow."
             echo "skip=true" >> $GITHUB_OUTPUT
           else
@@ -84,7 +84,7 @@ jobs:
           token: ${{ secrets.PAT }}
           ref: main
           repo: 'hub'
-          owner: 'leol0ps'
+          owner: 'prof-acc01'
           workflow: nvm.yml
           workflow_inputs: '{"repo": "${{ github.repository }}" }'
           workflow_timeout_seconds: 120
@@ -95,7 +95,7 @@ jobs:
         with:
           token: ${{ secrets.PAT }}
           repo: hub
-          owner: leol0ps
+          owner: prof-acc01
           run_id: ${{ steps.return_dispatch.outputs.run_id }}
           run_timeout_seconds: 300
           poll_interval_ms: 5000
